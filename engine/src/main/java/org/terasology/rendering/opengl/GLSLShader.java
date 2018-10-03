@@ -116,6 +116,7 @@ public class GLSLShader extends Shader {
         GL20.glAttachShader(shaderProgram, disposalAction.vertexPrograms.get(featureHash));
         GL20.glLinkProgram(shaderProgram);
         GL20.glValidateProgram(shaderProgram);
+
         return shaderProgram;
     }
 

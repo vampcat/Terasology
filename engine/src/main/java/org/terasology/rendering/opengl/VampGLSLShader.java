@@ -74,6 +74,7 @@ public class VampGLSLShader extends VampShader {
         GL20.glAttachShader(shaderProgram, disposalAction.vertexPrograms.get(featureHash));
         GL20.glLinkProgram(shaderProgram);
         GL20.glValidateProgram(shaderProgram);
+
         return shaderProgram;
     }
 
@@ -82,97 +83,112 @@ public class VampGLSLShader extends VampShader {
         // TODO: Complete.
     }
 
-    private StringBuilder createShaderBuilder() {
-        String preProcessorPreamble = "#version 120\n";
+    private int compileShader(int type) {
+        int shaderId = GL20.glCreateShader(type);
 
-        // TODO: Implement a system for this - this has gotten way out of hand.
-        WorldAtlas worldAtlas = CoreRegistry.get(WorldAtlas.class);
-        if (worldAtlas != null) {
-            preProcessorPreamble += "#define TEXTURE_OFFSET " + worldAtlas.getRelativeTileSize() + "\n";
-        } else {
-            preProcessorPreamble += "#define TEXTURE_OFFSET 0.06125\n";
-        }
-        RenderingConfig renderConfig = config.getRendering();
+        String shader = assembleShader(type, features);
 
-        preProcessorPreamble += "#define BLOCK_LIGHT_POW " + WorldRenderer.BLOCK_LIGHT_POW + "\n";
-        preProcessorPreamble += "#define BLOCK_LIGHT_SUN_POW " + WorldRenderer.BLOCK_LIGHT_SUN_POW + "\n";
-        preProcessorPreamble += "#define BLOCK_INTENSITY_FACTOR " + WorldRenderer.BLOCK_INTENSITY_FACTOR + "\n";
-        preProcessorPreamble += "#define SHADOW_MAP_RESOLUTION " + (float) renderConfig.getShadowMapResolution() + "\n";
-        preProcessorPreamble += "#define SSAO_KERNEL_ELEMENTS " + SSAO_KERNEL_ELEMENTS + "\n";
-        preProcessorPreamble += "#define SSAO_NOISE_SIZE " + SSAO_NOISE_SIZE + "\n";
-        // TODO: This shouldn't be hardcoded
-        preProcessorPreamble += "#define TEXTURE_OFFSET_EFFECTS " + 0.0625f + "\n";
-
-        StringBuilder builder = new StringBuilder().append(preProcessorPreamble);
-        if (renderConfig.isVolumetricFog()) {
-            builder.append("#define VOLUMETRIC_FOG");
+        if (config.getRendering().isDumpShaders()) {
+            dumpCode(type, features, shader);
         }
 
-        if (renderConfig.isAnimateGrass()) {
-            builder.append("#define ANIMATED_GRASS \n");
-        }
-        if (renderConfig.isAnimateWater()) {
-            builder.append("#define ANIMATED_WATER \n");
-        }
-        if (renderConfig.getBlurIntensity() == 0) {
-            builder.append("#define NO_BLUR \n");
-        }
-        if (renderConfig.isFlickeringLight()) {
-            builder.append("#define FLICKERING_LIGHT \n");
-        }
-        if (renderConfig.isVignette()) {
-            builder.append("#define VIGNETTE \n");
-        }
-        if (renderConfig.isBloom()) {
-            builder.append("#define BLOOM \n");
-        }
-        if (renderConfig.isMotionBlur()) {
-            builder.append("#define MOTION_BLUR \n");
-        }
-        if (renderConfig.isSsao()) {
-            builder.append("#define SSAO \n");
-        }
-        if (renderConfig.isFilmGrain()) {
-            builder.append("#define FILM_GRAIN \n");
-        }
-        if (renderConfig.isOutline()) {
-            builder.append("#define OUTLINE \n");
-        }
-        if (renderConfig.isLightShafts()) {
-            builder.append("#define LIGHT_SHAFTS \n");
-        }
-        if (renderConfig.isDynamicShadows()) {
-            builder.append("#define DYNAMIC_SHADOWS \n");
-        }
-        if (renderConfig.isNormalMapping()) {
-            builder.append("#define NORMAL_MAPPING \n");
-        }
-        if (renderConfig.isParallaxMapping()) {
-            builder.append("#define PARALLAX_MAPPING \n");
-        }
-        if (renderConfig.isDynamicShadowsPcfFiltering()) {
-            builder.append("#define DYNAMIC_SHADOWS_PCF \n");
-        }
-        if (renderConfig.isCloudShadows()) {
-            builder.append("#define CLOUD_SHADOWS \n");
-        }
-        if (renderConfig.isLocalReflections()) {
-            builder.append("#define LOCAL_REFLECTIONS \n");
-        }
-        if (renderConfig.isInscattering()) {
-            builder.append("#define INSCATTERING \n");
-        }
-        // TODO A 3D wizard should take a look at this. Configurable for the moment to make better comparisons possible.
-        if (renderConfig.isClampLighting()) {
-            builder.append("#define CLAMP_LIGHTING \n");
-        }
+        GL20.glShaderSource(shaderId, shader);
+        GL20.glCompileShader(shaderId);
 
-        for (ChunkVertexFlag vertexFlag : ChunkVertexFlag.values()) {
-            builder.append("#define ").append(vertexFlag.getDefineName()).append(" int(").append(vertexFlag.getValue()).append(") \n");
-        }
-
-        return builder;
+        return shaderId;
     }
+
+//    private StringBuilder createShaderBuilder() {
+//        String preProcessorPreamble = "#version 120\n";
+//
+//        // TODO: Implement a system for this - this has gotten way out of hand.
+//        WorldAtlas worldAtlas = CoreRegistry.get(WorldAtlas.class);
+//        if (worldAtlas != null) {
+//            preProcessorPreamble += "#define TEXTURE_OFFSET " + worldAtlas.getRelativeTileSize() + "\n";
+//        } else {
+//            preProcessorPreamble += "#define TEXTURE_OFFSET 0.06125\n";
+//        }
+//        RenderingConfig renderConfig = config.getRendering();
+//
+//        preProcessorPreamble += "#define BLOCK_LIGHT_POW " + WorldRenderer.BLOCK_LIGHT_POW + "\n";
+//        preProcessorPreamble += "#define BLOCK_LIGHT_SUN_POW " + WorldRenderer.BLOCK_LIGHT_SUN_POW + "\n";
+//        preProcessorPreamble += "#define BLOCK_INTENSITY_FACTOR " + WorldRenderer.BLOCK_INTENSITY_FACTOR + "\n";
+//        preProcessorPreamble += "#define SHADOW_MAP_RESOLUTION " + (float) renderConfig.getShadowMapResolution() + "\n";
+//        preProcessorPreamble += "#define SSAO_KERNEL_ELEMENTS " + SSAO_KERNEL_ELEMENTS + "\n";
+//        preProcessorPreamble += "#define SSAO_NOISE_SIZE " + SSAO_NOISE_SIZE + "\n";
+//        // TODO: This shouldn't be hardcoded
+//        preProcessorPreamble += "#define TEXTURE_OFFSET_EFFECTS " + 0.0625f + "\n";
+//
+//        StringBuilder builder = new StringBuilder().append(preProcessorPreamble);
+//        if (renderConfig.isVolumetricFog()) {
+//            builder.append("#define VOLUMETRIC_FOG");
+//        }
+//
+//        if (renderConfig.isAnimateGrass()) {
+//            builder.append("#define ANIMATED_GRASS \n");
+//        }
+//        if (renderConfig.isAnimateWater()) {
+//            builder.append("#define ANIMATED_WATER \n");
+//        }
+//        if (renderConfig.getBlurIntensity() == 0) {
+//            builder.append("#define NO_BLUR \n");
+//        }
+//        if (renderConfig.isFlickeringLight()) {
+//            builder.append("#define FLICKERING_LIGHT \n");
+//        }
+//        if (renderConfig.isVignette()) {
+//            builder.append("#define VIGNETTE \n");
+//        }
+//        if (renderConfig.isBloom()) {
+//            builder.append("#define BLOOM \n");
+//        }
+//        if (renderConfig.isMotionBlur()) {
+//            builder.append("#define MOTION_BLUR \n");
+//        }
+//        if (renderConfig.isSsao()) {
+//            builder.append("#define SSAO \n");
+//        }
+//        if (renderConfig.isFilmGrain()) {
+//            builder.append("#define FILM_GRAIN \n");
+//        }
+//        if (renderConfig.isOutline()) {
+//            builder.append("#define OUTLINE \n");
+//        }
+//        if (renderConfig.isLightShafts()) {
+//            builder.append("#define LIGHT_SHAFTS \n");
+//        }
+//        if (renderConfig.isDynamicShadows()) {
+//            builder.append("#define DYNAMIC_SHADOWS \n");
+//        }
+//        if (renderConfig.isNormalMapping()) {
+//            builder.append("#define NORMAL_MAPPING \n");
+//        }
+//        if (renderConfig.isParallaxMapping()) {
+//            builder.append("#define PARALLAX_MAPPING \n");
+//        }
+//        if (renderConfig.isDynamicShadowsPcfFiltering()) {
+//            builder.append("#define DYNAMIC_SHADOWS_PCF \n");
+//        }
+//        if (renderConfig.isCloudShadows()) {
+//            builder.append("#define CLOUD_SHADOWS \n");
+//        }
+//        if (renderConfig.isLocalReflections()) {
+//            builder.append("#define LOCAL_REFLECTIONS \n");
+//        }
+//        if (renderConfig.isInscattering()) {
+//            builder.append("#define INSCATTERING \n");
+//        }
+//        // TODO A 3D wizard should take a look at this. Configurable for the moment to make better comparisons possible.
+//        if (renderConfig.isClampLighting()) {
+//            builder.append("#define CLAMP_LIGHTING \n");
+//        }
+//
+//        for (ChunkVertexFlag vertexFlag : ChunkVertexFlag.values()) {
+//            builder.append("#define ").append(vertexFlag.getDefineName()).append(" int(").append(vertexFlag.getValue()).append(") \n");
+//        }
+//
+//        return builder;
+//    }
 
     private String assembleShader(int type) {
         StringBuilder shader = createShaderBuilder();
@@ -212,21 +228,6 @@ public class VampGLSLShader extends VampShader {
         } catch (IOException e) {
             logger.error("Failed to dump shader source.");
         }
-    }
-
-    private int compileShader(int type, Set<ShaderProgramFeature> features) {
-        int shaderId = GL20.glCreateShader(type);
-
-        String shader = assembleShader(type, features);
-
-        if (config.getRendering().isDumpShaders()) {
-            dumpCode(type, features, shader);
-        }
-
-        GL20.glShaderSource(shaderId, shader);
-        GL20.glCompileShader(shaderId);
-
-        return shaderId;
     }
 
     private String getLogInfo(int shaderId) {
